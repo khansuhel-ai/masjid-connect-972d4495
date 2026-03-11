@@ -1,1 +1,19 @@
 project_id = "sejmnksspoighcprmbpi"
+
+[auth]
+enabled = true
+site_url = "http://localhost:8888"
+additional_redirect_urls = ["https://connect-masjid.netlify.app"]
+jwt_expiry = 3600
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = false
+max_frequency = "30s"
+
+# Test OTP for development — bypasses real SMS delivery
+# These numbers will auto-verify with the specified OTP code
+[auth.sms.test_otp]
+"+919999999999" = "123456"
