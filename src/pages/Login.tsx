@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Phone, ArrowLeft, Moon } from "lucide-react";
+import { Phone, ArrowLeft, Moon, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+
+const isDev = import.meta.env.DEV;
+const TEST_PHONE = "9999999999";
+const TEST_OTP = "123456";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -152,6 +156,33 @@ const Login = () => {
           <p className="text-center text-xs text-muted-foreground mt-8">
             By continuing, you agree to our Terms of Service
           </p>
+
+          {isDev && (
+            <div className="mt-6 rounded-xl border border-dashed border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                <FlaskConical className="w-4 h-4" />
+                Dev Mode — Test Credentials
+              </div>
+              <div className="text-xs text-amber-800/80 dark:text-amber-300/70 space-y-1">
+                <p>Phone: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">+91{TEST_PHONE}</code></p>
+                <p>OTP: <code className="bg-amber-100 dark:bg-amber-900/40 px-1 rounded">{TEST_OTP}</code></p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-xs h-8 border-amber-400/60 text-amber-700 dark:text-amber-400 hover:bg-amber-100/50 dark:hover:bg-amber-900/30"
+                onClick={() => {
+                  if (step === "phone") {
+                    setPhone(TEST_PHONE);
+                  } else {
+                    setOtp(TEST_OTP);
+                  }
+                }}
+              >
+                {step === "phone" ? "Fill test phone number" : "Fill test OTP"}
+              </Button>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
