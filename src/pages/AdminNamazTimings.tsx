@@ -66,9 +66,11 @@ const AdminNamazTimings = () => {
         }).eq("id", existingId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("namaz_timings").insert({
-          ...timings, masjid_id: masjidId!, updated_by: user!.id,
-        });
+        const { error } = await supabase.from("namaz_timings").insert([{
+          fajr: timings.fajr, zuhr: timings.zuhr, asr: timings.asr,
+          maghrib: timings.maghrib, isha: timings.isha,
+          masjid_id: masjidId!, updated_by: user!.id,
+        }]);
         if (error) throw error;
       }
       toast.success("Timings updated!");
