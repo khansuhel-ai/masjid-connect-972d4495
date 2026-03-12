@@ -1,27 +1,39 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Megaphone, Share2 } from "lucide-react";
+import { ArrowLeft, Megaphone, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/BottomNav";
-
-const announcements = [
-  { id: 1, title: "Jumu'ah Khutbah Topic", body: "This Friday's khutbah will focus on 'Patience in times of trials'. All community members are encouraged to attend.", time: "2 hours ago", type: "khutbah" },
-  { id: 2, title: "Madrasa Admissions Open", body: "Register your children for the new Madrasa session starting next month. Contact the office for details.", time: "1 day ago", type: "madrasa" },
-  { id: 3, title: "Community Iftar Event", body: "Join us for the community iftar this Saturday at 6:30 PM. Bring your family and friends.", time: "2 days ago", type: "event" },
-  { id: 4, title: "Masjid Cleaning Drive", body: "Volunteers needed for the monthly masjid cleaning drive this Sunday morning at 8 AM.", time: "3 days ago", type: "general" },
-];
-
-const typeColors: Record<string, string> = {
-  khutbah: "bg-primary/10 text-primary border-primary/20",
-  madrasa: "bg-cosmic-light text-cosmic border-cosmic/20",
-  event: "bg-gold-light text-gold border-gold/20",
-  general: "bg-muted text-muted-foreground border-border",
-};
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const Announcements = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { navigate("/login"); return; }
+    loadAnnouncements();
+  }, [user]);
+
+  const loadAnnouncements = async () => {
+    const { data: profile } = await supabase.from("profiles").select("masjid_id").eq("user_id", user!.id).single();
+    if (profile?.masjid_id) {
+      const { data } = await supabase.from("announcements")
+        .select("*")
+        .eq("masjid_id", profile.masjid_id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (data) setAnnouncements(data);
+    }
+    setLoading(false);
+  };
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -35,28 +47,22 @@ const Announcements = () => {
       </div>
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-3">
-        {announcements.map((a, i) => (
-          <motion.div
-            key={a.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.08 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <Badge variant="outline" className={`text-[10px] ${typeColors[a.type]}`}>
-                  {a.type}
-                </Badge>
-                <span className="text-[10px] text-muted-foreground">{a.time}</span>
-              </div>
-              <h3 className="font-semibold text-foreground text-sm mb-1">{a.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{a.body}</p>
-              <Button variant="ghost" size="sm" className="mt-2 -ml-2 text-xs text-primary gap-1 h-8">
-                <Share2 className="w-3.5 h-3.5" /> Share
-              </Button>
-            </Card>
-          </motion.div>
-        ))}
+        {announcements.length === 0 ? (
+          <div className="text-center py-12">
+            <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No announcements yet</p>
+          </div>
+        ) : (
+          announcements.map((a, i) => (
+            <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+              <Card className="p-4">
+                <h3 className="font-semibold text-foreground text-sm mb-1">{a.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{a.body}</p>
+                <p className="text-[10px] text-muted-foreground mt-2">{new Date(a.created_at).toLocaleDateString()}</p>
+              </Card>
+            </motion.div>
+          ))
+        )}
       </div>
 
       <BottomNav />
