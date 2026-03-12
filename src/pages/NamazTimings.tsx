@@ -1,19 +1,54 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Sun, Sunset, Moon, CloudSun, Star } from "lucide-react";
+import { ArrowLeft, Sun, Sunset, Moon, CloudSun, Star, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-const timings = [
-  { name: "Fajr", time: "5:15 AM", adhan: "5:10 AM", icon: Moon, color: "from-indigo-500/10 to-purple-500/10" },
-  { name: "Zuhr", time: "12:30 PM", adhan: "12:25 PM", icon: Sun, color: "from-amber-500/10 to-yellow-500/10" },
-  { name: "Asr", time: "4:00 PM", adhan: "3:55 PM", icon: CloudSun, color: "from-orange-500/10 to-amber-500/10", isNext: true },
-  { name: "Maghrib", time: "6:25 PM", adhan: "6:25 PM", icon: Sunset, color: "from-rose-500/10 to-orange-500/10" },
-  { name: "Isha", time: "7:45 PM", adhan: "7:40 PM", icon: Star, color: "from-slate-500/10 to-indigo-500/10" },
-];
+const prayerMeta: Record<string, { icon: React.ElementType; color: string }> = {
+  fajr: { icon: Moon, color: "from-indigo-500/10 to-purple-500/10" },
+  zuhr: { icon: Sun, color: "from-amber-500/10 to-yellow-500/10" },
+  asr: { icon: CloudSun, color: "from-orange-500/10 to-amber-500/10" },
+  maghrib: { icon: Sunset, color: "from-rose-500/10 to-orange-500/10" },
+  isha: { icon: Star, color: "from-slate-500/10 to-indigo-500/10" },
+};
+
+const prayerNames: Record<string, string> = { fajr: "Fajr", zuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
+
+const formatTime = (t: string) => {
+  if (!t) return "";
+  const [h, m] = t.split(":");
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+};
 
 const NamazTimings = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [timings, setTimings] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) { navigate("/login"); return; }
+    loadTimings();
+  }, [user]);
+
+  const loadTimings = async () => {
+    const { data: profile } = await supabase.from("profiles").select("masjid_id").eq("user_id", user!.id).single();
+    if (profile?.masjid_id) {
+      const { data } = await supabase.from("namaz_timings").select("*").eq("masjid_id", profile.masjid_id).single();
+      setTimings(data);
+    }
+    setLoading(false);
+  };
+
+  const prayerOrder = ["fajr", "zuhr", "asr", "maghrib", "isha"];
+
+  if (loading) {
+    return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -29,32 +64,32 @@ const NamazTimings = () => {
       <div className="px-4 py-6 max-w-lg mx-auto space-y-3">
         <Card className="p-4 bg-secondary border-primary/20">
           <p className="text-xs text-muted-foreground">Today</p>
-          <p className="font-semibold text-foreground">Thursday, March 6, 2026</p>
-          <p className="text-xs text-primary mt-1 font-arabic">٦ رمضان ١٤٤٧</p>
+          <p className="font-semibold text-foreground">{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
         </Card>
 
-        {timings.map((t, i) => (
-          <motion.div
-            key={t.name}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: i * 0.08 }}
-          >
-            <Card className={`p-4 flex items-center gap-4 ${t.isNext ? "border-primary ring-1 ring-primary/20" : ""}`}>
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${t.color} flex items-center justify-center`}>
-                <t.icon className={`w-6 h-6 ${t.isNext ? "text-primary" : "text-muted-foreground"}`} />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className={`font-semibold ${t.isNext ? "text-primary" : "text-foreground"}`}>{t.name}</p>
-                  {t.isNext && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">Next</span>}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Adhan: {t.adhan}</p>
-              </div>
-              <p className={`text-lg font-bold ${t.isNext ? "text-primary" : "text-foreground"}`}>{t.time}</p>
-            </Card>
-          </motion.div>
-        ))}
+        {!timings ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No timings set for your masjid yet</p>
+          </div>
+        ) : (
+          prayerOrder.map((key, i) => {
+            const meta = prayerMeta[key];
+            const Icon = meta.icon;
+            return (
+              <motion.div key={key} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }}>
+                <Card className="p-4 flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center`}>
+                    <Icon className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">{prayerNames[key]}</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{formatTime(timings[key])}</p>
+                </Card>
+              </motion.div>
+            );
+          })
+        )}
       </div>
 
       <BottomNav />
